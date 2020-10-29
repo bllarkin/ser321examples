@@ -25,6 +25,7 @@ import java.util.Random;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.nio.charset.Charset;
+import org.json.*;
 
 class WebServer {
   public static void main(String args[]) {
@@ -201,21 +202,38 @@ class WebServer {
           // extract path parameters
           query_pairs = splitQuery(request.replace("multiply?", ""));
 
+          Integer num1 = null, num2 = null;
+
           // extract required fields from parameters
-          Integer num1 = Integer.parseInt(query_pairs.get("num1"));
-          Integer num2 = Integer.parseInt(query_pairs.get("num2"));
+          if(query_pairs.get("num1") != null) {
+            num1 = Integer.parseInt(query_pairs.get("num1"));
+          } else {
+            builder.append("HTTP/1.1 406 Not Acceptable");
+            builder.append("Content-Type: text/html; charset=utf-8\n");
+            builder.append("\n");
+            builder.append("Num1 not provided");
+          } 
+          
+          if(query_pairs.get("num2") != null) {
+            num2 = Integer.parseInt(query_pairs.get("num2"));
+          } else {
+            builder.append("HTTP/1.1 406 Not Acceptable");
+            builder.append("Content-Type: text/html; charset=utf-8\n");
+            builder.append("\n");
+            builder.append("Num2 not provided");
 
-          // do math
-          Integer result = num1 * num2;
+          }
 
-          // Generate response
-          builder.append("HTTP/1.1 200 OK\n");
-          builder.append("Content-Type: text/html; charset=utf-8\n");
-          builder.append("\n");
-          builder.append("Result is: " + result);
+          if(num1 != null && num2 != null) {
+            // do math
+            Integer result = num1 * num2;
 
-          // TODO: Include error handling here with a correct error code and
-          // a response that makes sense
+            // Generate response
+            builder.append("HTTP/1.1 200 OK\n");
+            builder.append("Content-Type: text/html; charset=utf-8\n");
+            builder.append("\n");
+            builder.append("Result is: " + result);
+          }
 
         } else if (request.contains("github?")) {
           // pulls the query from the request and runs it with GitHub's REST API
@@ -229,16 +247,28 @@ class WebServer {
           Map<String, String> query_pairs = new LinkedHashMap<String, String>();
           query_pairs = splitQuery(request.replace("github?", ""));
           String json = fetchURL("https://api.github.com/" + query_pairs.get("query"));
-          System.out.println(json);
-
-          builder.append("Check the todos mentioned in the Java source file");
-          // TODO: Parse the JSON returned by your fetch and create an appropriate
+          // System.out.println(json);
+          // builder.append("Check the todos mentioned in the Java source file");
+          // Parse the JSON returned by your fetch and create an appropriate
           // response
           // and list the owner name, owner id and name of the public repo on your webpage, e.g.
           // amehlhase, 46384989 -> memoranda
           // amehlhase, 46384989 -> ser316examples
           // amehlhase, 46384989 -> test316
 
+          JSONArray dataArray = new JSONArray(json);
+
+          builder.append("HTTP/1.1 200 OK\n");
+          builder.append("Content-Type: text/html; charset=utf-8\n");
+          builder.append("\n");
+
+          // System.out.print(dataArray);
+          for(int i = 0; i < dataArray.length(); i++) {
+            JSONObject repo = dataArray.getJSONObject(i);
+            JSONObject owner = repo.getJSONObject("owner");
+
+            builder.append(owner.getString("login") + ", " + owner.get("id") + " -> " + repo.getString("name") + "<br />\n"); 
+          }
         } else {
           // if the request is not recognized at all
 
